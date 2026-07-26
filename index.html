@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>My Storage</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2f3a;
+    --text: #e6e9ef;
+    --muted: #8b93a3;
+    --accent: #5b8cff;
+    --accent-hover: #4574e8;
+    --danger: #e5484d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  #app { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* ---------- Login screen ---------- */
+  #loginScreen {
+    max-width: 380px; margin: 80px auto; padding: 28px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  }
+  #loginScreen h1 { font-size: 20px; margin: 0 0 18px; text-align: center; }
+  #loginScreen input {
+    width: 100%; padding: 10px 12px; margin-bottom: 10px;
+    background: #10131a; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 14px;
+  }
+  #loginScreen button {
+    width: 100%; padding: 10px; border: none; border-radius: 8px;
+    background: var(--accent); color: white; font-weight: 600; cursor: pointer; font-size: 14px;
+  }
+  #loginScreen button:hover { background: var(--accent-hover); }
+  #loginToggle { text-align: center; margin-top: 12px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  #loginError { color: var(--danger); font-size: 13px; margin-bottom: 8px; min-height: 16px; }
+
+  /* ---------- Main screen ---------- */
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  header h1 { font-size: 18px; margin: 0; }
+  #logoutBtn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  #logoutBtn:hover { border-color: var(--danger); color: var(--danger); }
+
+  #quotaBar { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; }
+  #quotaTrack { height: 8px; background: #10131a; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  #quotaFill { height: 100%; background: var(--accent); width: 0%; transition: width .3s; }
+  #quotaLabel { font-size: 12px; color: var(--muted); }
+
+  #toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    padding: 9px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn.primary:hover { background: var(--accent-hover); }
+
+  #breadcrumb { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  #breadcrumb span { cursor: pointer; color: var(--accent); }
+  #breadcrumb span:hover { text-decoration: underline; }
+
+  #folderList { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .folderChip {
+    padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px;
+    font-size: 12px; cursor: pointer; color: var(--muted); background: var(--panel);
+  }
+  .folderChip:hover { border-color: var(--accent); color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  th, td { padding: 10px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+  tr:last-child td { border-bottom: none; }
+  .fileName { font-weight: 500; }
+  .fileMeta { color: var(--muted); font-size: 12px; }
+  .rowActions { display: flex; gap: 6px; justify-content: flex-end; }
+  .iconBtn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    padding: 5px 9px; border-radius: 6px; cursor: pointer; font-size: 12px;
+  }
+  .iconBtn:hover { color: var(--text); border-color: var(--accent); }
+  .iconBtn.danger:hover { color: var(--danger); border-color: var(--danger); }
+
+  #emptyState { text-align: center; color: var(--muted); padding: 50px 20px; }
+  #status { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: var(--panel); border: 1px solid var(--border); padding: 10px 18px;
+    border-radius: 8px; font-size: 13px; display: none; }
+  #hiddenFileInput { display: none; }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <h1 id="loginTitle">Log in to My Storage</h1>
+  <div id="loginError"></div>
+  <input type="email" id="loginEmail" placeholder="Email" />
+  <input type="password" id="loginPassword" placeholder="Password" />
+  <button id="loginSubmit">Log In</button>
+  <div id="loginToggle">Don't have an account? Sign up</div>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <h1>📁 My Storage</h1>
+    <button id="logoutBtn">Log out</button>
+  </header>
+
+  <div id="quotaBar">
+    <div id="quotaLabel">Loading storage usage...</div>
+    <div id="quotaTrack"><div id="quotaFill"></div></div>
+  </div>
+
+  <div id="toolbar">
+    <button class="btn primary" id="uploadBtn">⬆ Upload files</button>
+    <button class="btn" id="newFolderBtn">＋ New folder</button>
+    <button class="btn" id="refreshBtn">⟳ Refresh</button>
+  </div>
+
+  <div id="breadcrumb"></div>
+  <div id="folderList"></div>
+
+  <div id="tableWrap">
+    <table id="fileTable">
+      <thead>
+        <tr><th>Name</th><th>Size</th><th>Uploaded</th><th></th></tr>
+      </thead>
+      <tbody id="fileTableBody"></tbody>
+    </table>
+    <div id="emptyState" style="display:none">No files in this folder yet. Click "Upload files" to add some.</div>
+  </div>
+</div>
+
+<input type="file" id="hiddenFileInput" multiple />
+<div id="status"></div>
+
+<script>
+const API = ''; // same origin — server serves this page itself
+
+let accessToken = localStorage.getItem('accessToken') || null;
+let refreshToken = localStorage.getItem('refreshToken') || null;
+let currentFolder = '/';
+let isSignup = false;
+let allFolders = new Set(['/']);
+// Folders the user explicitly created but hasn't uploaded into yet
+let pinnedFolders = JSON.parse(localStorage.getItem('pinnedFolders') || '[]');
+
+function showStatus(msg, isError) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.borderColor = isError ? 'var(--danger)' : 'var(--border)';
+  clearTimeout(showStatus._t);
+  showStatus._t = setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function formatBytes(bytes) {
+  bytes = Number(bytes);
+  if (bytes < 1024) return bytes + ' B';
+  const units = ['KB','MB','GB','TB'];
+  let i = -1;
+  do { bytes /= 1024; i++; } while (bytes >= 1024 && i < units.length - 1);
+  return bytes.toFixed(1) + ' ' + units[i];
+}
+
+async function api(path, options = {}) {
+  options.headers = options.headers || {};
+  if (accessToken) options.headers['Authorization'] = 'Bearer ' + accessToken;
+  let res = await fetch(API + path, options);
+  if (res.status === 401 && refreshToken) {
+    // Try to silently refresh the access token once
+    const r = await fetch(API + '/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken })
+    });
+    if (r.ok) {
+      const data = await r.json();
+      accessToken = data.accessToken;
+      localStorage.setItem('accessToken', accessToken);
+      options.headers['Authorization'] = 'Bearer ' + accessToken;
+      res = await fetch(API + path, options);
+    } else {
+      logout();
+      throw new Error('Session expired, please log in again');
+    }
+  }
+  return res;
+}
+
+// ---------------- Auth ----------------
+
+document.getElementById('loginToggle').onclick = () => {
+  isSignup = !isSignup;
+  document.getElementById('loginTitle').textContent = isSignup ? 'Create your account' : 'Log in to My Storage';
+  document.getElementById('loginSubmit').textContent = isSignup ? 'Sign Up' : 'Log In';
+  document.getElementById('loginToggle').textContent = isSignup ? 'Already have an account? Log in' : "Don't have an account? Sign up";
+};
+
+document.getElementById('loginSubmit').onclick = async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Enter email and password'; return; }
+
+  try {
+    const res = await fetch(API + (isSignup ? '/auth/signup' : '/auth/login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!data.success) { errEl.textContent = data.error || 'Something went wrong'; return; }
+    accessToken = data.accessToken;
+    refreshToken = data.refreshToken;
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    enterApp();
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server. Is it running?';
+  }
+};
+
+function logout() {
+  accessToken = null; refreshToken = null;
+  localStorage.removeItem('accessToken'); localStorage.removeItem('refreshToken');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'block';
+}
+document.getElementById('logoutBtn').onclick = logout;
+
+function enterApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadQuota();
+  loadFiles();
+}
+
+// ---------------- Quota ----------------
+
+async function loadQuota() {
+  const res = await api('/user/storage-usage');
+  const data = await res.json();
+  if (!data.success) return;
+  document.getElementById('quotaLabel').textContent =
+    `${formatBytes(data.storageUsed)} of ${formatBytes(data.storageLimit)} used (${data.percentUsed}%)`;
+  document.getElementById('quotaFill').style.width = Math.min(data.percentUsed, 100) + '%';
+}
+
+// ---------------- Folders ----------------
+
+function renderBreadcrumb() {
+  const parts = currentFolder.split('/').filter(Boolean);
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = '';
+  const root = document.createElement('span');
+  root.textContent = 'Home';
+  root.onclick = () => { currentFolder = '/'; loadFiles(); };
+  bc.appendChild(root);
+  let acc = '';
+  parts.forEach(p => {
+    acc += '/' + p;
+    bc.appendChild(document.createTextNode(' / '));
+    const seg = document.createElement('span');
+    seg.textContent = p;
+    const target = acc;
+    seg.onclick = () => { currentFolder = target; loadFiles(); };
+    bc.appendChild(seg);
+  });
+}
+
+function renderFolderChips() {
+  const wrap = document.getElementById('folderList');
+  wrap.innerHTML = '';
+  const combined = new Set([...allFolders, ...pinnedFolders]);
+  combined.forEach(f => {
+    if (f === currentFolder) return;
+    // Only show direct children of the current folder, one level deep
+    const isChild = f !== '/' && f.startsWith(currentFolder === '/' ? '/' : currentFolder + '/');
+    const rel = f === '/' ? '' : f.slice(currentFolder === '/' ? 1 : currentFolder.length + 1);
+    if (currentFolder !== '/' && !f.startsWith(currentFolder + '/')) return;
+    if (currentFolder === '/' && f === '/') return;
+    if (rel.includes('/')) return; // not a direct child, skip (nested deeper)
+    if (!rel) return;
+    const chip = document.createElement('div');
+    chip.className = 'folderChip';
+    chip.textContent = '📁 ' + rel;
+    chip.onclick = () => { currentFolder = f; loadFiles(); };
+    wrap.appendChild(chip);
+  });
+}
+
+document.getElementById('newFolderBtn').onclick = () => {
+  const name = prompt('New folder name:');
+  if (!name || !name.trim()) return;
+  const clean = name.trim().replace(/\//g, '-');
+  const newPath = (currentFolder === '/' ? '' : currentFolder) + '/' + clean;
+  pinnedFolders.push(newPath);
+  localStorage.setItem('pinnedFolders', JSON.stringify(pinnedFolders));
+  allFolders.add(newPath);
+  renderFolderChips();
+  showStatus('Folder created. Upload a file into it to make it permanent.');
+};
+
+// ---------------- Files ----------------
+
+async function loadFiles() {
+  renderBreadcrumb();
+  const res = await api('/files');
+  const data = await res.json();
+  if (!data.success) { showStatus(data.error || 'Failed to load files', true); return; }
+
+  allFolders = new Set(['/']);
+  data.files.forEach(f => allFolders.add(f.folder_path));
+  renderFolderChips();
+
+  const filesHere = data.files.filter(f => f.folder_path === currentFolder);
+  const tbody = document.getElementById('fileTableBody');
+  tbody.innerHTML = '';
+  document.getElementById('emptyState').style.display = filesHere.length ? 'none' : 'block';
+
+  filesHere.forEach(f => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="fileName">${escapeHtml(f.original_name)}</td>
+      <td class="fileMeta">${formatBytes(f.size)}</td>
+      <td class="fileMeta">${new Date(f.created_at).toLocaleDateString()}</td>
+      <td><div class="rowActions"></div></td>
+    `;
+    const actions = tr.querySelector('.rowActions');
+
+    const dl = document.createElement('button');
+    dl.className = 'iconBtn'; dl.textContent = '⬇ Download';
+    dl.onclick = () => downloadFile(f.id, f.original_name);
+    actions.appendChild(dl);
+
+    const share = document.createElement('button');
+    share.className = 'iconBtn'; share.textContent = '🔗 Share';
+    share.onclick = () => shareFile(f.id);
+    actions.appendChild(share);
+
+    const del = document.createElement('button');
+    del.className = 'iconBtn danger'; del.textContent = '🗑 Delete';
+    del.onclick = () => deleteFile(f.id);
+    actions.appendChild(del);
+
+    tbody.appendChild(tr);
+  });
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+async function downloadFile(id, name) {
+  const res = await api(`/files/${id}/download`);
+  if (!res.ok) { showStatus('Download failed', true); return; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function shareFile(id) {
+  const res = await api(`/files/${id}/share`, { method: 'POST' });
+  const data = await res.json();
+  if (!data.success) { showStatus('Could not create share link', true); return; }
+  const fullUrl = window.location.origin + data.shareUrl;
+  await navigator.clipboard.writeText(fullUrl).catch(() => {});
+  showStatus('Share link copied: ' + fullUrl);
+}
+
+async function deleteFile(id) {
+  if (!confirm('Delete this file? This cannot be undone.')) return;
+  const res = await api(`/files/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (!data.success) { showStatus(data.error || 'Delete failed', true); return; }
+  showStatus('File deleted');
+  loadFiles();
+  loadQuota();
+}
+
+// ---------------- Upload ----------------
+
+document.getElementById('uploadBtn').onclick = () => document.getElementById('hiddenFileInput').click();
+
+document.getElementById('hiddenFileInput').onchange = async (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  showStatus(`Uploading ${files.length} file(s)...`);
+
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folderPath', currentFolder);
+    try {
+      const res = await api('/files/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!data.success) showStatus(`Failed: ${file.name} — ${data.error}`, true);
+    } catch (err) {
+      showStatus(`Failed: ${file.name}`, true);
+    }
+  }
+  showStatus('Upload complete');
+  e.target.value = '';
+  loadFiles();
+  loadQuota();
+};
+
+document.getElementById('refreshBtn').onclick = () => { loadFiles(); loadQuota(); };
+
+// ---------------- Boot ----------------
+
+if (accessToken) enterApp();
+</script>
+</body>
+</html>
